@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет отверстий</title>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
+        h1 { font-size: 20px; text-align: center; color: #ffb703; }
+        .item { background: #1e1e1e; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .info { max-width: 65%; }
+        .title { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+        .price { font-size: 12px; color: #aaa; }
+        .controls { display: flex; align-items: center; gap: 10px; }
+        button { background: #ffb703; border: none; color: #000; font-size: 20px; font-weight: bold; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; }
+        button:active { background: #fb8500; }
+        .count { font-size: 18px; min-width: 30px; text-align: center; }
+        .total-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; border: 2px solid #ffb703; }
+        .loading { text-align: center; color: #aaa; margin-top: 50px; }
+    </style>
+</head>
+<body>
+
+    <h1>Прайс-лист и расчет стоимости</h1>
+    <div id="loading" class="loading">Загрузка данных из таблицы...</div>
+    <div id="app" style="display:none;">
+        <div id="list"></div>
+        <div class="total-box">
+            <strong>ИТОГО С НДС: <span id="grand-total">0</span> сум</strong>
+        </div>
+    </div>
+
+    <script>
+        // Ваша новая рабочая ссылка на Google Apps Script
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWm_gDaqP1MtYaIMjo05SS6FOK0napl6Bg75JUVj1lE2T4HJr08Tl0YXkT3wwSjIwf/exec";
+
+        let data = [];
+
+        async function loadData() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                data = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                render();
+            } catch (e) {
+                document.getElementById('loading').innerText = "Ошибка загрузки данных.";
+            }
+        }
+
+        function render() {
+            const list = document.getElementById('list');
+            list.innerHTML = '';
+            let grandTotal = 0;
+
+            data.forEach((item, index) => {
+                grandTotal += item.total;
+                list.innerHTML += `
+                    <div class="item">
+                        <div class="info">
+                            <div class="title">${item.name}</div>
+                            <div class="price">${item.price.toLocaleString()} сум / шт.</div>
+                        </div>
+                        <div class="controls">
+                            <button onclick="changeCount(${index}, -1)">-</button>
+                            <span class="count" id="count-${index}">${item.count}</span>
+                            <button onclick="changeCount(${index}, 1)">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('grand-total').innerText = grandTotal.toLocaleString();
+        }
+
+        async function changeCount(index, delta) {
+            if (data[index].count + delta < 0) return;
+            
+            data[index].count += delta;
+            data[index].total = data[index].count * data[index].price;
+            render();
+
+            // Отправляем изменения и дельту (+1 или -1) для записи истории
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    row: index + 2, 
+                    count: data[index].count,
+                    delta: delta 
+                })
+            });
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
