@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учет отверстий (V2)</title>
+    <title>Учет отверстий</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
         h1 { font-size: 20px; text-align: center; color: #ffb703; }
@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    <h1>Прайс-лист и расчет стоимости (V2)</h1>
+    <h1>Прайс-лист и расчет стоимости</h1>
     <div id="loading" class="loading">Загрузка данных из таблицы...</div>
     <div id="app" style="display:none;">
         <div id="list"></div>
@@ -31,27 +31,15 @@
     </div>
 
     <script>
-        // Твоя ссылка на скрипт
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQY3bQ6MqRMqZL6g6PwadTGShYg05U2Kq-B8rVrkbw15yey_eI6itvQLNrEfcsNLnY/exec";
+        // ВСТАВЬ СЮДА СВОЮ НОВУЮ ССЫЛКУ ИЗ ШАГА 1
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyebDdBn5wSFTknv7dh25BdHdbQvuYUBdylMenebrNKVIUn_wYpf6-PGbYaEmau4RwoKA/exec";
 
         let data = [];
 
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                const rawData = await response.json();
-                
-                // Исправляем структуру данных прямо при загрузке:
-                // Переносим цену из count в price, а количество (count) сбрасываем в 0
-                data = rawData.map(item => {
-                    return {
-                        name: item.name,
-                        price: Number(item.count) || 0, // Забираем цену отсюда
-                        count: 0,                       // Стартовое количество всегда 0
-                        total: 0
-                    };
-                });
-
+                data = await response.json();
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 render();
@@ -91,7 +79,7 @@
             data[index].total = data[index].count * data[index].price;
             render();
 
-            // Отправляем изменения в Apps Script
+            // Отправляем изменение и дельту (+1 или -1) для логирования истории
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -99,7 +87,7 @@
                 body: JSON.stringify({ 
                     row: index + 2, 
                     count: data[index].count,
-                    delta: delta 
+                    delta: delta
                 })
             });
         }
