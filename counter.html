@@ -31,26 +31,15 @@
     </div>
 
     <script>
-        // Твоя личная ссылка на макрос со скриншота развертывания
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4DyzQ3GBgUKBAcOviRhwdnntT5ZNQIGGP_HuvOcpu7BETOy1AZglXNcS4ZLVCEHRYlA/exec";
+        // Сюда мы вставим ссылку на ваш Google Script (сделаем на следующем шаге)
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoXKpri1C0llH69WUXTiwV9mYjFL1Bo1pheDbRA9LUX_LoW3CnEqThJA-62NzcPzZz/exec";
 
         let data = [];
 
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                const rawData = await response.json();
-                
-                // Фильтруем пустые строки из новой таблицы и безопасно превращаем в числа, чтобы не было ошибок
-                data = rawData.filter(item => item.name && item.name.toString().trim() !== "").map(item => {
-                    return {
-                        name: item.name,
-                        price: Number(item.price) || 0,
-                        count: Number(item.count) || 0,
-                        total: Number(item.total) || 0
-                    };
-                });
-
+                data = await response.json();
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 render();
@@ -90,16 +79,12 @@
             data[index].total = data[index].count * data[index].price;
             render();
 
-            // Отправляем изменение и дельту (+1/-1), чтобы Apps Script мог записать это в Историю
+            // Отправляем изменение в Google Таблицу в фоновом режиме
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    row: index + 2, 
-                    count: data[index].count,
-                    delta: delta 
-                })
+                body: JSON.stringify({ row: index + 2, count: data[index].count })
             });
         }
 
