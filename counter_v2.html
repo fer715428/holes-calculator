@@ -3,36 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учет отверстий (V2)</title>
+    <title>Учет отверстий</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
         h1 { font-size: 20px; text-align: center; color: #ffb703; margin-bottom: 15px; }
         
-        /* Панель переключения вкладок */
+        /* Кнопки переключения вкладок */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
         .tab-btn { background: #222; color: #aaa; border: 1px solid #333; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; text-align: center; }
         .tab-btn.active { background: #ffb703; color: #000; border-color: #ffb703; }
         
-        /* Стили элементов списков */
+        /* Стили карточек (из твоего оригинала) */
         .item { background: #1e1e1e; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
         .info { max-width: 65%; }
         .title { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
         .price, .date { font-size: 12px; color: #aaa; }
         
-        /* Элементы управления калькулятора */
+        /* Управление кнопками */
         .controls { display: flex; align-items: center; gap: 10px; }
-        button.ctrl-btn { background: #ffb703; border: none; color: #000; font-size: 20px; font-weight: bold; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; }
-        button.ctrl-btn:active { background: #fb8500; }
+        button { background: #ffb703; border: none; color: #000; font-size: 20px; font-weight: bold; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; }
+        button:active { background: #fb8500; }
         .count { font-size: 18px; min-width: 30px; text-align: center; }
-        
-        /* Итоговая плашка */
         .total-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; border: 2px solid #ffb703; }
+        .loading { text-align: center; color: #aaa; margin-top: 50px; }
         
-        /* Плашка изменения в истории */
+        /* Плашки для истории */
         .badge { background: #ffb703; color: #000; font-size: 14px; font-weight: bold; padding: 8px 12px; border-radius: 5px; min-width: 35px; text-align: center; }
         .badge.minus { background: #e63946; color: #fff; }
-        
-        .loading { text-align: center; color: #aaa; margin-top: 50px; }
     </style>
 </head>
 <body>
@@ -46,7 +43,7 @@
 
     <div id="loading" class="loading">Загрузка данных...</div>
 
-    <div id="calc-view" style="display:none;">
+    <div id="app" style="display:none;">
         <div id="list"></div>
         <div class="total-box">
             <strong>ИТОГО С НДС: <span id="grand-total">0</span> сум</strong>
@@ -58,45 +55,51 @@
     </div>
 
     <script>
-        // Твоя ссылка на макрос новой таблицы-копии
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4DyzQ3GBgUKBAcOviRhwdnntT5ZNQIGGP_HuvOcpu7BETOy1AZgIXNcS4ZLVCEXRYlA/exec";
+        // Ссылка строго с твоего скриншота развертывания
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz4DyzQ3GBgUKBAcOviRhwdnntT5ZNQIGGP_HuvOcpu7BETOy1AZglXNcS4ZLVCEHRYlA/exec";
 
         let data = [];
         let currentTab = 'calc';
 
-        // Функция переключения вкладок
+        // Переключение режимов экрана
         async function switchTab(tab) {
             currentTab = tab;
             document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
             document.getElementById('tab-history').classList.toggle('active', tab === 'history');
             
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('history-view').style.display = 'none';
+
             if (tab === 'calc') {
-                document.getElementById('history-view').style.display = 'none';
-                document.getElementById('loading').style.display = 'block';
                 await loadData();
             } else {
-                document.getElementById('calc-view').style.display = 'none';
-                document.getElementById('loading').style.display = 'block';
                 await loadHistory();
             }
         }
 
-        // Загрузка прайса (Калькулятор)
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
                 data = await response.json();
+                
+                // Исправляем пустые данные из новой таблицы: если прилетает пустота, делаем их нулями
+                data.forEach(item => {
+                    item.count = Number(item.count) || 0;
+                    item.total = Number(item.total) || 0;
+                    item.price = Number(item.price) || 0;
+                });
+
                 if (currentTab === 'calc') {
                     document.getElementById('loading').style.display = 'none';
-                    document.getElementById('calc-view').style.display = 'block';
-                    renderCalc();
+                    document.getElementById('app').style.display = 'block';
+                    render();
                 }
             } catch (e) {
-                document.getElementById('loading').innerText = "Ошибка загрузки прайса.";
+                document.getElementById('loading').innerText = "Ошибка загрузки данных из таблицы.";
             }
         }
 
-        // Загрузка логов (История)
         async function loadHistory() {
             try {
                 const response = await fetch(`${SCRIPT_URL}?type=history`);
@@ -110,7 +113,7 @@
                     logList.innerHTML = '';
                     
                     if (historyData.length === 0) {
-                        logList.innerHTML = '<div style="text-align:center; color:#aaa; margin-top:30px;">История пока пуста</div>';
+                        logList.innerHTML = '<div style="text-align:center; color:#aaa; padding: 20px;">История пуста</div>';
                         return;
                     }
 
@@ -132,8 +135,7 @@
             }
         }
 
-        // Отрисовка калькулятора
-        function renderCalc() {
+        function render() {
             const list = document.getElementById('list');
             list.innerHTML = '';
             let grandTotal = 0;
@@ -147,9 +149,9 @@
                             <div class="price">${item.price.toLocaleString()} сум / шт.</div>
                         </div>
                         <div class="controls">
-                            <button class="ctrl-btn" onclick="changeCount(${index}, -1)">-</button>
+                            <button onclick="changeCount(${index}, -1)">-</button>
                             <span class="count" id="count-${index}">${item.count}</span>
-                            <button class="ctrl-btn" onclick="changeCount(${index}, 1)">+</button>
+                            <button onclick="changeCount(${index}, 1)">+</button>
                         </div>
                     </div>
                 `;
@@ -157,13 +159,12 @@
             document.getElementById('grand-total').innerText = grandTotal.toLocaleString();
         }
 
-        // Изменение количества
         async function changeCount(index, delta) {
             if (data[index].count + delta < 0) return;
             
             data[index].count += delta;
             data[index].total = data[index].count * data[index].price;
-            renderCalc();
+            render();
 
             fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -172,12 +173,11 @@
                 body: JSON.stringify({ 
                     row: index + 2, 
                     count: data[index].count,
-                    delta: delta
+                    delta: delta 
                 })
             });
         }
 
-        // Первый запуск
         loadData();
     </script>
 </body>
