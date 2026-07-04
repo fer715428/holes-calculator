@@ -31,15 +31,27 @@
     </div>
 
     <script>
-        // Твой актуальный скрипт
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQY3bQ6MqRMqZL6g6PwadTGShYg05U2Kq-B8rVrkbw15yey_eI6itvQLNrEfcsNLnY/exec";
+        // Твоя ссылка на скрипт
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQY3bQ6MqRMqZL6g6PwadTGShYg05U2Kq-B8rVrkbw15yey_eI6itvQLNrEfcsNLnY/exec";
 
         let data = [];
 
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                data = await response.json();
+                const rawData = await response.json();
+                
+                // Исправляем структуру данных прямо при загрузке:
+                // Переносим цену из count в price, а количество (count) сбрасываем в 0
+                data = rawData.map(item => {
+                    return {
+                        name: item.name,
+                        price: Number(item.count) || 0, // Забираем цену отсюда
+                        count: 0,                       // Стартовое количество всегда 0
+                        total: 0
+                    };
+                });
+
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 render();
@@ -54,10 +66,7 @@
             let grandTotal = 0;
 
             data.forEach((item, index) => {
-                // Пересчитываем общую стоимость на стороне телефона, чтобы не зависеть от багов таблицы
-                const itemTotal = item.count * item.price;
-                grandTotal += itemTotal;
-
+                grandTotal += item.total;
                 list.innerHTML += `
                     <div class="item">
                         <div class="info">
@@ -79,9 +88,10 @@
             if (data[index].count + delta < 0) return;
             
             data[index].count += delta;
+            data[index].total = data[index].count * data[index].price;
             render();
 
-            // Отправляем данные в Apps Script, включая delta для листа "История"
+            // Отправляем изменения в Apps Script
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
