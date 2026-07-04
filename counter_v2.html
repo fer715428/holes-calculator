@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учет отверстий (V2 - Авто-Фикс)</title>
+    <title>Учет отверстий (V2)</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
         h1 { font-size: 20px; text-align: center; color: #ffb703; }
@@ -31,6 +31,7 @@
     </div>
 
     <script>
+        // Твой актуальный скрипт
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQY3bQ6MqRMqZL6g6PwadTGShYg05U2Kq-B8rVrkbw15yey_eI6itvQLNrEfcsNLnY/exec";
 
         let data = [];
@@ -38,35 +39,7 @@
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                const rawData = await response.json();
-                
-                // Фильтруем пустые строки прямо на клиенте
-                const cleanData = rawData.filter(item => item.name && item.name.trim() !== "" && !item.name.toLowerCase().includes("итого"));
-                
-                // ЖЕСТКАЯ ПРОВЕРКА ДАННЫХ: расставляем цену и количество по местам
-                data = cleanData.map(item => {
-                    let price = Number(item.price) || 0;
-                    let count = Number(item.count) || 0;
-                    
-                    // Если скрипт перепутал местами и записал цену в count
-                    if (count > 1000 && (price === 0 || price === count || price < 100)) {
-                        price = count;
-                        count = 0;
-                    }
-                    
-                    // Если цена вообще не пришла, но была в item.total
-                    if (price === 0 && item.total && Number(item.total) > 1000) {
-                        price = Number(item.total);
-                    }
-                    
-                    return {
-                        name: item.name,
-                        price: price,
-                        count: count,
-                        total: count * price
-                    };
-                });
-                
+                data = await response.json();
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 render();
@@ -81,7 +54,7 @@
             let grandTotal = 0;
 
             data.forEach((item, index) => {
-                // Считаем итоговую стоимость на лету на основе выровненных данных
+                // Пересчитываем общую стоимость на стороне телефона, чтобы не зависеть от багов таблицы
                 const itemTotal = item.count * item.price;
                 grandTotal += itemTotal;
 
@@ -108,6 +81,7 @@
             data[index].count += delta;
             render();
 
+            // Отправляем данные в Apps Script, включая delta для листа "История"
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
