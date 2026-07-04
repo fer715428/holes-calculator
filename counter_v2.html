@@ -31,7 +31,7 @@
     </div>
 
     <script>
-        // Твоя самая свежая ссылка на Apps Script
+        // Твоя новая рабочая ссылка на Google Apps Script
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoxMMyVjKB0TNPJgp4E4_7pZCQPma4_j7QTq_VoEGzJFCPDMRUbnfCqWoMUsE9M7CR/exec";
 
         let data = [];
@@ -54,20 +54,16 @@
             let grandTotal = 0;
 
             data.forEach((item, index) => {
-                const price = Number(item.price) || 0;
-                const count = Number(item.count) || 0;
-                const total = count * price;
-                grandTotal += total;
-
+                grandTotal += item.total;
                 list.innerHTML += `
                     <div class="item">
                         <div class="info">
                             <div class="title">${item.name}</div>
-                            <div class="price">${price.toLocaleString()} сум / шт.</div>
+                            <div class="price">${item.price.toLocaleString()} сум / шт.</div>
                         </div>
                         <div class="controls">
                             <button onclick="changeCount(${index}, -1)">-</button>
-                            <span class="count" id="count-${index}">${count}</span>
+                            <span class="count" id="count-${index}">${item.count}</span>
                             <button onclick="changeCount(${index}, 1)">+</button>
                         </div>
                     </div>
@@ -80,8 +76,10 @@
             if (data[index].count + delta < 0) return;
             
             data[index].count += delta;
+            data[index].total = data[index].count * data[index].price;
             render();
 
+            // Отправляем изменение и дельту (+1 или -1) для логирования истории
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
