@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    <h1>Прайс-лист и расчет стоимости (V2 с историей)</h1>
+    <h1>Прайс-лист и расчет стоимости (V2)</h1>
     <div id="loading" class="loading">Загрузка данных из таблицы...</div>
     <div id="app" style="display:none;">
         <div id="list"></div>
@@ -38,7 +38,11 @@
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
-                data = await response.json();
+                const rawData = await response.json();
+                
+                // Фильтруем пустые строки из таблицы, чтобы не было пустых карточек внизу
+                data = rawData.filter(item => item.name && item.name.trim() !== "" && !item.name.toLowerCase().includes("итого"));
+                
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 render();
@@ -53,16 +57,21 @@
             let grandTotal = 0;
 
             data.forEach((item, index) => {
-                grandTotal += item.total;
+                // Защита от NaN: если цена или количество не распознались, ставим 0
+                const price = Number(item.price) || 0;
+                const count = Number(item.count) || 0;
+                const total = count * price;
+                grandTotal += total;
+
                 list.innerHTML += `
                     <div class="item">
                         <div class="info">
                             <div class="title">${item.name}</div>
-                            <div class="price">${item.price.toLocaleString()} сум / шт.</div>
+                            <div class="price">${price.toLocaleString()} сум / шт.</div>
                         </div>
                         <div class="controls">
                             <button onclick="changeCount(${index}, -1)">-</button>
-                            <span class="count" id="count-${index}">${item.count}</span>
+                            <span class="count" id="count-${index}">${count}</span>
                             <button onclick="changeCount(${index}, 1)">+</button>
                         </div>
                     </div>
@@ -72,12 +81,13 @@
         }
 
         async function changeCount(index, delta) {
-            if (data[index].count + delta < 0) return;
+            const currentCount = Number(data[index].count) || 0;
+            if (currentCount + delta < 0) return;
             
-            data[index].count += delta;
-            data[index].total = data[index].count * data[index].price;
+            data[index].count = currentCount + delta;
             render();
 
+            // Отправляем корректные данные в Apps Script
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
