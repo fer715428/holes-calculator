@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Учет отверстий</title>
+    <title>Учет отверстий (V2)</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
         h1 { font-size: 20px; text-align: center; color: #ffb703; }
@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    <h1>Прайс-лист и расчет стоимости</h1>
+    <h1>Прайс-лист и расчет стоимости (V2 с историей)</h1>
     <div id="loading" class="loading">Загрузка данных из таблицы...</div>
     <div id="app" style="display:none;">
         <div id="list"></div>
@@ -31,7 +31,6 @@
     </div>
 
     <script>
-        // Ваша новая рабочая ссылка на Google Apps Script
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWm_gDaqP1MtYaIMjo05SS6FOK0napl6Bg75JUVj1lE2T4HJr08Tl0YXkT3wwSjIwf/exec";
 
         let data = [];
@@ -79,7 +78,6 @@
             data[index].total = data[index].count * data[index].price;
             render();
 
-            // Отправляем изменения и дельту (+1 или -1) для записи истории
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
