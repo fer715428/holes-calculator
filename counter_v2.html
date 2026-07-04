@@ -6,23 +6,41 @@
     <title>Учет отверстий</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #fff; padding: 15px; margin: 0; }
-        h1 { font-size: 20px; text-align: center; color: #ffb703; }
+        h1 { font-size: 20px; text-align: center; color: #ffb703; margin-bottom: 15px; }
+        
+        /* Кнопки переключения вкладок */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .tab-btn { background: #222; color: #aaa; border: 1px solid #333; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; text-align: center; }
+        .tab-btn.active { background: #ffb703; color: #000; border-color: #ffb703; }
+        
+        /* Стили карточек из твоего рабочего оригинала */
         .item { background: #1e1e1e; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
         .info { max-width: 65%; }
         .title { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
-        .price { font-size: 12px; color: #aaa; }
+        .price, .date { font-size: 12px; color: #aaa; }
         .controls { display: flex; align-items: center; gap: 10px; }
         button { background: #ffb703; border: none; color: #000; font-size: 20px; font-weight: bold; width: 40px; height: 40px; border-radius: 5px; cursor: pointer; }
         button:active { background: #fb8500; }
         .count { font-size: 18px; min-width: 30px; text-align: center; }
         .total-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px; border: 2px solid #ffb703; }
         .loading { text-align: center; color: #aaa; margin-top: 50px; }
+        
+        /* Стили для плашек изменений в истории */
+        .badge { background: #ffb703; color: #000; font-size: 14px; font-weight: bold; padding: 8px 12px; border-radius: 5px; min-width: 35px; text-align: center; }
+        .badge.minus { background: #e63946; color: #fff; }
     </style>
 </head>
 <body>
 
     <h1>Прайс-лист и расчет стоимости</h1>
+
+    <div class="tabs">
+        <div id="tab-calc" class="tab-btn active" onclick="switchTab('calc')">Калькулятор</div>
+        <div id="tab-history" class="tab-btn" onclick="switchTab('history')">История</div>
+    </div>
+
     <div id="loading" class="loading">Загрузка данных из таблицы...</div>
+
     <div id="app" style="display:none;">
         <div id="list"></div>
         <div class="total-box">
@@ -30,18 +48,41 @@
         </div>
     </div>
 
+    <div id="history-view" style="display:none;">
+        <div id="log-list"></div>
+    </div>
+
     <script>
-        // Твоя личная ссылка на макрос со скриншота развертывания
+        // Твоя личная рабочая ссылка на макрос
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwiF0FrBOwR6sFA04os4km0-shRXr_x-iupyGd9-pTtX4UKki0rp244L25PP8nECbpKpw/exec";
 
         let data = [];
+        let currentTab = 'calc';
 
+        // Переключатель вкладок
+        async function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-calc').classList.toggle('active', tab === 'calc');
+            document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = "Загрузка данных...";
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('history-view').style.display = 'none';
+
+            if (tab === 'calc') {
+                await loadData();
+            } else {
+                await loadHistory();
+            }
+        }
+
+        // Загрузка калькулятора (оставили твой рабочий код без изменений)
         async function loadData() {
             try {
                 const response = await fetch(SCRIPT_URL);
                 const rawData = await response.json();
                 
-                // Фильтруем пустые строки из новой таблицы и безопасно превращаем в числа, чтобы не было ошибок
                 data = rawData.filter(item => item.name && item.name.toString().trim() !== "").map(item => {
                     return {
                         name: item.name,
@@ -51,14 +92,53 @@
                     };
                 });
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                render();
+                if (currentTab === 'calc') {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('app').style.display = 'block';
+                    render();
+                }
             } catch (e) {
                 document.getElementById('loading').innerText = "Ошибка загрузки данных.";
             }
         }
 
+        // Безопасная загрузка истории без влияния на калькулятор
+        async function loadHistory() {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?type=history`);
+                const historyData = await response.json();
+                
+                if (currentTab === 'history') {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('history-view').style.display = 'block';
+                    
+                    const logList = document.getElementById('log-list');
+                    logList.innerHTML = '';
+                    
+                    if (!historyData || historyData.length === 0) {
+                        logList.innerHTML = '<div style="text-align:center; color:#aaa; padding: 20px;">История пуста</div>';
+                        return;
+                    }
+
+                    historyData.forEach(item => {
+                        const isMinus = item.delta.toString().includes('-');
+                        logList.innerHTML += `
+                            <div class="item">
+                                <div class="info">
+                                    <div class="title">${item.name}</div>
+                                    <div class="date">${item.date} (Всего: ${item.count} шт.)</div>
+                                </div>
+                                <div class="badge ${isMinus ? 'minus' : ''}">${item.delta}</div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (e) {
+                document.getElementById('loading').innerText = "Ошибка загрузки истории.";
+            }
+        }
+
+        // Твоя рабочая функция отрисовки калькулятора
         function render() {
             const list = document.getElementById('list');
             list.innerHTML = '';
@@ -83,6 +163,7 @@
             document.getElementById('grand-total').innerText = grandTotal.toLocaleString();
         }
 
+        // Твоя рабочая функция изменения количества
         async function changeCount(index, delta) {
             if (data[index].count + delta < 0) return;
             
@@ -90,7 +171,6 @@
             data[index].total = data[index].count * data[index].price;
             render();
 
-            // Отправляем изменение и дельту (+1/-1), чтобы Apps Script мог записать это в Историю
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -103,6 +183,7 @@
             });
         }
 
+        // Старт приложения с калькулятора
         loadData();
     </script>
 </body>
